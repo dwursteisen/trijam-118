@@ -6,6 +6,7 @@ import com.github.dwursteisen.minigdx.GameContext
 import com.github.dwursteisen.minigdx.Seconds
 import com.github.dwursteisen.minigdx.ecs.Engine
 import com.github.dwursteisen.minigdx.ecs.components.Component
+import com.github.dwursteisen.minigdx.ecs.components.CoordinateConverter.World
 import com.github.dwursteisen.minigdx.ecs.components.HorizontalAlignment
 import com.github.dwursteisen.minigdx.ecs.components.ScriptComponent
 import com.github.dwursteisen.minigdx.ecs.components.TextComponent
@@ -47,6 +48,7 @@ class Wall : Component
 class Instruction : Component
 class Player : Component
 class Target : Component
+class Arrow : Component
 
 class SmokeSystem(private val model: Node, private val scene: Scene) : System(EntityQuery.of(SmokeComponent::class)) {
 
@@ -84,6 +86,7 @@ class MovableSystem : System(EntityQuery.of(Movable::class)) {
     private val rayResolver = RayResolver()
 
     private val walls by interested(EntityQuery.of(Wall::class))
+    private val arrows by interested(EntityQuery.of(Arrow::class))
 
     private var changed = false
 
@@ -152,8 +155,24 @@ class MovableSystem : System(EntityQuery.of(Movable::class)) {
             }
             DIRECTION -> {
                 entity.position.setLocalTranslation(y = originY + 0.3f + abs(cos(time * 0.5f) * 0.1f))
+                val bb = entity.get(BoundingBox::class)
+                val (a, b) = arrows
+                a.attachTo(entity)
+                b.attachTo(entity)
+                    val offset = abs(cos(time * 2f)) * 0.5f
+                if (entity.position.rotation.y != 0.0f) {
+                    a.position.setLocalTranslation(z = bb.size.x + offset, x = 0f, using = World)
+                    b.position.setLocalTranslation(z = -offset - 0.5f, x = 0f)
+                    // b.position.setLocalRotation(y = 90f)
+                } else {
+                    a.position.setLocalTranslation(z = bb.size.x + offset, x = 0f, using = World)
+                    b.position.setLocalTranslation(z = -offset - 0.5f, x = 0f)
+                    // b.position.setLocalRotation(y = 90f)
+                }
                 if (input.isKeyJustPressed(Key.ENTER) || input.isKeyJustPressed(Key.SPACE)) {
                     entity.get(Movable::class).state = SELECTED
+                    a.position.setGlobalTranslation(x = 100)
+                    b.position.setGlobalTranslation(x = 100)
                 } else if (input.isKeyJustPressed(Key.ARROW_LEFT)) {
                     if (entity.position.rotation.y != 0.0f) {
                         return
@@ -170,6 +189,8 @@ class MovableSystem : System(EntityQuery.of(Movable::class)) {
                     entity.add(ScriptComponent(
                         script = { moveObj(entity) }
                     ))
+                    a.position.setGlobalTranslation(x = 100)
+                    b.position.setGlobalTranslation(x = 100)
                 } else if (input.isKeyJustPressed(Key.ARROW_RIGHT)) {
                     if (entity.position.rotation.y != 0.0f) {
                         return
@@ -186,6 +207,8 @@ class MovableSystem : System(EntityQuery.of(Movable::class)) {
                     entity.add(ScriptComponent(
                         script = { moveObj(entity) }
                     ))
+                    a.position.setGlobalTranslation(x = 100)
+                    b.position.setGlobalTranslation(x = 100)
                 } else if (input.isKeyJustPressed(Key.ARROW_UP)) {
                     if (entity.position.rotation.y == 0.0f) {
                         return
@@ -202,6 +225,8 @@ class MovableSystem : System(EntityQuery.of(Movable::class)) {
                     entity.add(ScriptComponent(
                         script = { moveObj(entity) }
                     ))
+                    a.position.setGlobalTranslation(x = 100)
+                    b.position.setGlobalTranslation(x = 100)
                 } else if (input.isKeyJustPressed(Key.ARROW_DOWN)) {
                     if (entity.position.rotation.y == 0.0f) {
                         return
@@ -218,6 +243,8 @@ class MovableSystem : System(EntityQuery.of(Movable::class)) {
                     entity.add(ScriptComponent(
                         script = { moveObj(entity) }
                     ))
+                    a.position.setGlobalTranslation(x = 100)
+                    b.position.setGlobalTranslation(x = 100)
                 }
             }
         }
@@ -258,11 +285,11 @@ class PlayerSystem : System(EntityQuery.of(Player::class)) {
 
     var end = false
     override fun update(delta: Seconds, entity: Entity) {
-        if(end) return
-        
+        if (end) return
+
         if (collider.collide(entity, targets.first())) {
             end = true
-            
+
             instructions.forEach {
                 it.get(TextComponent::class).text.content = "  !! Congratulation !!"
             }
@@ -308,6 +335,11 @@ class MyGame(override val gameContext: GameContext) : Game {
 
             if (node.name == "target") {
                 entity.add(Target())
+            }
+
+            // creating both arrows
+            if (node.name.startsWith("arrow")) {
+                entity.add(Arrow())
             }
         }
     }
