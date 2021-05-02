@@ -24,4 +24,4 @@ pluginManagement {
     }
 }
 
-includeBuild("../3d-skeleton")
+// includeBuild("../3d-skeleton")
